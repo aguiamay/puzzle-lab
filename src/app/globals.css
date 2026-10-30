@@ -1,0 +1,9 @@
+@import '../styles/tokens.css';
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--background); color: var(--ink); font-family: Arial, Helvetica, sans-serif; line-height: 1.5; }
+button, a { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+button { font: inherit; cursor: pointer; color: var(--ink); }
+button:disabled { cursor: not-allowed; }
+:focus-visible { outline: 3px solid #155fba; outline-offset: 4px; }
+a { color: inherit; }
+h1,h2,p { margin: 0; }

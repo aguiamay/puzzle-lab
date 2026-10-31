@@ -1,6 +1,6 @@
 # Puzzle Lab
 
-Etapa 1.1: estabilização da demonstração geométrica experimental, independente do jogo de referência.
+Etapa 2: arraste, snap e prévia de encaixe na demonstração geométrica experimental, independente do jogo de referência.
 
 ```sh
 npm ci
@@ -11,7 +11,8 @@ Abra http://localhost:3000. Requer Node >=20.9.
 
 Verificações: `npm run typecheck`, `npm run lint`, `npm run build`.
 
-- [Relatório e roteiro manual atual — etapa 1.1](docs/stage-01-1.md)
+- [Relatório e roteiro manual atual — etapa 2](docs/stage-02.md)
+- [Relatório histórico — etapa 1.1](docs/stage-01-1.md)
 - [Relatório histórico — etapa 1](docs/stage-01.md)
 - [Premissas e solução conhecida](docs/geometry-assumptions.md)
 

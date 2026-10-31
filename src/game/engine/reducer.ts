@@ -1,5 +1,5 @@
 import type { Action, GameState, Orientation, Puzzle, Snapshot } from './types';
-import { validatePlacement } from './placement';
+import { validatePlacement, validateMove } from './placement';
 import { isComplete } from './validation';
 export function initialState(puzzle: Puzzle): GameState {
   const counts: Record<string, number> = {};
@@ -21,6 +21,15 @@ export function reduceGame(puzzle: Puzzle, state: GameState, action: Action): Ga
   if (action.type === 'REDO') {
     const next = state.future[0];
     return next ? { ...state, present: next, past: [...state.past, state.present], future: state.future.slice(1), feedback: { text: isComplete(puzzle, next) ? 'Demonstração concluída!' : 'Ação refeita.', error: false } } : message('Nada para refazer.');
+  }
+  if (action.type === 'DROP_PIECE') {
+    const original = state.present.pieces.find(p => p.id === action.id);
+    if (!original) return message('Peça desconhecida.', true);
+    const candidate = { ...original, orientation: action.orientation };
+    const result = validateMove(puzzle, state.present, candidate, action.position);
+    if (!result.ok) return message(result.reason, true);
+    if (original.position?.x === action.position.x && original.position?.y === action.position.y && original.orientation === action.orientation) return message('A peça permaneceu na mesma posição.');
+    return commit({ pieces: state.present.pieces.map(p => p.id === original.id ? { ...candidate, position: { ...action.position } } : p) }, `${original.id} encaixada a ${action.orientation * 90}°.`);
   }
   const piece = state.present.pieces.find(p => p.id === state.selectedId);
   if (!piece) return message('Selecione uma peça primeiro.', true);

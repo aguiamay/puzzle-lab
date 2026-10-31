@@ -40,3 +40,9 @@ export function validAnchors(puzzle: Puzzle, snapshot: Snapshot, piece: PieceIns
   const validate = placementValidator(puzzle, snapshot, piece);
   return puzzle.board.cells.filter(cell => validate(cell).ok).map(({ x, y }) => ({ x, y }));
 }
+
+// Reposicionamento atômico: somente a própria instância deixa de ocupar casas.
+export function validateMove(puzzle: Puzzle, snapshot: Snapshot, piece: PieceInstance, position: Point): Validation {
+  const withoutSelf = { pieces: snapshot.pieces.map(p => p.id === piece.id ? { ...p, position: null } : p) };
+  return validatePlacement(puzzle, withoutSelf, piece, position);
+}

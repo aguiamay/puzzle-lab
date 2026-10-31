@@ -36,5 +36,6 @@ export interface GameState {
 export type Action =
   | { type: 'SELECT_PIECE'; id: string }
   | { type: 'PLACE_PIECE'; position: Point }
+  | { type: 'DROP_PIECE'; id: string; position: Point; orientation: Orientation }
   | { type: 'ROTATE_PIECE' | 'REMOVE_PIECE' | 'UNDO' | 'REDO' | 'RESET' };
 export type Validation = { ok: true } | { ok: false; reason: string };

@@ -53,3 +53,37 @@
 @media (prefers-reduced-motion: reduce) { .cellSurface { transition: none; } }
 
 .currentPiece { margin: 12px 0; padding: 12px; border-radius: 10px; background: #edf2eb; font-size: 14px; overflow-wrap: anywhere; }
+
+.dragHandle { display: block; }
+.dragHandle svg, .draggableCell { touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+.dragHandle svg:active, .draggableCell:active { cursor: grabbing; }
+.dragOrigin { opacity: 0.35; }
+.inBoard { background: #edf0eb; }
+.inBoard svg { opacity: 0.7; }
+.ghost { pointer-events: none; }
+.floatingPiece { position: fixed; z-index: 30; pointer-events: none; overflow: visible; opacity: 0.88; filter: drop-shadow(0 6px 8px #142c3740); }
+.returning { transition: left 180ms ease-out, top 180ms ease-out; opacity: 0.4; }
+.dragControls { position: fixed; z-index: 40; bottom: 18px; left: 50%; transform: translateX(-50%); width: min(560px, calc(100% - 24px)); background: #fffefa; border: 2px solid var(--accent); box-shadow: var(--shadow); border-radius: 14px; padding: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+.dragControls p { width: 100%; font-size: 14px; }
+.dragControls button { min-height: 44px; padding: 8px 12px; border: 1px solid var(--accent); border-radius: 8px; background: #edf5ef; }
+.placedCell { animation: settle 160ms ease-out; }
+.victory { animation: complete 350ms ease-out; }
+@keyframes settle { from { opacity: 0.45; } to { opacity: 1; } }
+@keyframes complete { from { box-shadow: 0 0 0 5px #1c756f44; } to { box-shadow: 0 0 0 0 transparent; } }
+@media (max-width: 800px) {
+  .shell { padding-bottom: 210px; }
+  .trayPanel { position: fixed; bottom: 0; left: 0; right: 0; z-index: 10; border-radius: 18px 18px 0 0; padding: 10px 16px max(10px, env(safe-area-inset-bottom)); box-shadow: 0 -6px 24px #24373118; }
+  .trayPanel .sectionTitle h2 { font-size: 16px; }
+  .trayPanel > p, .trayPanel .selection { display: none; }
+  .tray { display: flex; overflow-x: auto; gap: 8px; margin-top: 6px; padding: 4px; }
+  .pieceCard { flex: 0 0 116px; padding: 8px; }
+  .pieceCard[aria-pressed='true'] { padding: 7px; }
+  .pieceCard svg { height: 46px; margin-bottom: 4px; }
+  .cardTitle { margin-bottom: 4px; }
+  .pieceCard small { font-size: 12px; }
+  .dragControls { bottom: auto; top: max(8px, env(safe-area-inset-top)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .returning { transition: none; }
+  .placedCell, .victory { animation: none; }
+}

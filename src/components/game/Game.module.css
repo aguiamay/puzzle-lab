@@ -70,16 +70,34 @@
 .victory { animation: complete 350ms ease-out; }
 @keyframes settle { from { opacity: 0.45; } to { opacity: 1; } }
 @keyframes complete { from { box-shadow: 0 0 0 5px #1c756f44; } to { box-shadow: 0 0 0 0 transparent; } }
+.trayToggle, .compactTray { display: none; }
+.assistance { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 14px; }
+.assistance input { width: 20px; height: 20px; accent-color: var(--accent); }
 @media (max-width: 800px) {
-  .shell { padding-bottom: 210px; }
-  .trayPanel { position: fixed; bottom: 0; left: 0; right: 0; z-index: 10; border-radius: 18px 18px 0 0; padding: 10px 16px max(10px, env(safe-area-inset-bottom)); box-shadow: 0 -6px 24px #24373118; }
+  .shell { padding-bottom: 240px; }
+  .trayPanel { position: fixed; bottom: 0; left: 0; right: 0; z-index: 10; border-radius: 18px 18px 0 0; padding: 8px 12px max(8px, env(safe-area-inset-bottom)); box-shadow: 0 -6px 24px #24373118; }
+  .trayPanel .sectionTitle { gap: 8px; }
   .trayPanel .sectionTitle h2 { font-size: 16px; }
+  .trayPanel .sectionTitle > span { display: none; }
   .trayPanel > p, .trayPanel .selection { display: none; }
-  .tray { display: flex; overflow-x: auto; gap: 8px; margin-top: 6px; padding: 4px; }
-  .pieceCard { flex: 0 0 116px; padding: 8px; }
-  .pieceCard[aria-pressed='true'] { padding: 7px; }
-  .pieceCard svg { height: 46px; margin-bottom: 4px; }
-  .cardTitle { margin-bottom: 4px; }
+  .trayToggle { display: block; }
+  .trayToggle, .compactTray button { min-height: 44px; border: 1px solid var(--accent); border-radius: 8px; background: #edf5ef; padding: 6px 10px; }
+  .tray { display: none; }
+  .compactTray { display: grid; gap: 6px; margin-top: 6px; }
+  .compactTray p { font-size: 13px; }
+  .pieceChips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .pieceChips button { min-width: 44px; }
+  .pieceChips button[aria-pressed='true'] { background: var(--accent); color: white; }
+  .selectedDock { display: flex; gap: 8px; align-items: center; }
+  .selectedDock > span { flex: 1; font-size: 12px; min-width: 0; }
+  .selectedDock .explicitDrag { flex: 0 0 72px; padding: 2px; touch-action: none; user-select: none; cursor: grab; }
+  .explicitDrag svg { display: block; height: 48px; }
+  .trayExpanded .compactTray { display: none; }
+  .trayExpanded .tray { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); max-height: min(48dvh, 420px); overflow-y: auto; overflow-x: hidden; overscroll-behavior-y: contain; gap: 10px; margin-top: 8px; padding: 5px; touch-action: pan-y pinch-zoom; }
+  .pieceCard { padding: 10px; touch-action: pan-y pinch-zoom; }
+  .pieceCard[aria-pressed='true'] { padding: 9px; }
+  .pieceCard svg { height: 64px; margin-bottom: 6px; touch-action: pan-y pinch-zoom; cursor: pointer; }
+  .cardTitle { margin-bottom: 6px; }
   .pieceCard small { font-size: 12px; }
   .dragControls { bottom: auto; top: max(8px, env(safe-area-inset-top)); }
 }

@@ -4,7 +4,7 @@ import type { Action, Cell, GameState, Orientation, PieceInstance, Point, Puzzle
 import { localCells } from '../engine/geometry';
 import { validateMove } from '../engine/placement';
 import { rotateContact, toLocal, toScreen } from '../interaction/coordinates';
-import { snapOrigin } from '../interaction/snap';
+import { snapOrigin, lastPlacementAnchor } from '../interaction/snap';
 
 export interface DragView {
   piece: PieceInstance;
@@ -14,9 +14,13 @@ export interface DragView {
   anchor: Point | null;
   validation: Validation;
   returning: boolean;
+  assisted: boolean;
 }
 interface Session {
   pointerId: number;
+  pointerType: string;
+  rightDown: boolean;
+  recoverChordCapture: boolean;
   source: Element;
   piece: PieceInstance;
   contact: Point;
@@ -28,30 +32,42 @@ interface Session {
   anchor: Point | null;
 }
 
-export function useDragInteraction(puzzle: Puzzle, state: GameState, dispatch: Dispatch<Action>) {
+export function useDragInteraction(puzzle: Puzzle, state: GameState, dispatch: Dispatch<Action>, assistLastPlacement = true) {
   const boardRef = useRef<SVGSVGElement>(null);
   const session = useRef<Session | null>(null);
   const frame = useRef<number | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suppressClick = useRef(false);
+  const secondary = useRef<{ id: number; start: Point; time: number; moved: boolean } | null>(null);
+  const secondaryClick = useRef<number | null>(null);
   const [view, setView] = useState<DragView | null>(null);
   const [notice, setNotice] = useState('');
 
   const derive = useCallback((s: Session): DragView => {
-    const logical = boardRef.current && toLocal(boardRef.current, s.pointer);
-    const anchor = logical ? snapOrigin({ x: logical.x - s.contact.x, y: logical.y - s.contact.y }, logical, puzzle, s.anchor) : null;
+    const board = boardRef.current;
+    const logical = board && toLocal(board, s.pointer);
+    const origin = logical && { x: logical.x - s.contact.x, y: logical.y - s.contact.y };
+    const assisted = logical && origin && lastPlacementAnchor(puzzle, state.present, s.piece, origin, logical, assistLastPlacement);
+    const anchor = assisted || (logical && origin ? snapOrigin(origin, logical, puzzle, s.anchor) : null);
     s.anchor = anchor;
+    const matrix = board?.getScreenCTM();
+    const boardScale = matrix ? Math.hypot(matrix.a, matrix.b) : s.scale;
+    // Transição em uma célula fora do tabuleiro, sempre ao redor do contato.
+    const distance = logical ? Math.max(0, -logical.x, -logical.y, logical.x - puzzle.board.width, logical.y - puzzle.board.height) : 1;
+    const blend = Math.max(0, 1 - distance);
+    const scale = s.scale + (boardScale - s.scale) * blend;
     return {
-      piece: s.piece, cells: localCells(puzzle, s.piece), scale: s.scale,
-      screenOrigin: { x: s.pointer.x - s.contact.x * s.scale, y: s.pointer.y - s.contact.y * s.scale },
+      piece: s.piece, cells: localCells(puzzle, s.piece), scale,
+      screenOrigin: { x: s.pointer.x - s.contact.x * scale, y: s.pointer.y - s.contact.y * scale },
       anchor, validation: anchor ? validateMove(puzzle, state.present, s.piece, anchor) : { ok: false, reason: 'Fora do tabuleiro. Aproxime a peça para encaixar.' },
-      returning: false,
+      returning: false, assisted: Boolean(assisted),
     };
-  }, [puzzle, state.present]);
+  }, [puzzle, state.present, assistLastPlacement]);
 
   const finish = useCallback((text: string, animate: boolean) => {
     const s = session.current;
     session.current = null;
+    secondary.current = null;
     if (frame.current !== null) cancelAnimationFrame(frame.current);
     frame.current = null;
     if (s?.source.hasPointerCapture(s.pointerId)) s.source.releasePointerCapture(s.pointerId);
@@ -59,7 +75,7 @@ export function useDragInteraction(puzzle: Puzzle, state: GameState, dispatch: D
     if (timer.current) clearTimeout(timer.current);
     if (s?.active && animate) {
       const original = state.present.pieces.find(p => p.id === s.piece.id)!;
-      setView({ ...derive(s), piece: original, cells: localCells(puzzle, original), anchor: null, screenOrigin: s.originScreen, returning: true });
+      setView({ ...derive(s), piece: original, cells: localCells(puzzle, original), anchor: null, scale: s.scale, screenOrigin: s.originScreen, returning: true });
       timer.current = setTimeout(() => setView(null), 180);
     } else setView(null);
     if (text) setNotice(text);
@@ -83,7 +99,7 @@ export function useDragInteraction(puzzle: Puzzle, state: GameState, dispatch: D
     setNotice('');
     suppressClick.current = false;
     session.current = {
-      pointerId: event.pointerId, source: event.currentTarget, piece,
+      pointerId: event.pointerId, pointerType: event.pointerType, rightDown: false, recoverChordCapture: false, source: event.currentTarget, piece,
       contact: { x: local.x - position.x, y: local.y - position.y },
       pointer, start: pointer, scale: Math.hypot(matrix.a, matrix.b), originScreen,
       active: false, anchor: null,
@@ -96,6 +112,13 @@ export function useDragInteraction(puzzle: Puzzle, state: GameState, dispatch: D
     const s = session.current;
     if (!s || s.pointerId !== event.pointerId) return;
     s.pointer = { x: event.clientX, y: event.clientY };
+    if (s.active && s.pointerType === 'mouse') {
+      s.recoverChordCapture = event.button === 2;
+      if (!(event.buttons & 1)) { end(event); return; }
+      const right = Boolean(event.buttons & 2);
+      if (right && !s.rightDown) { s.rightDown = true; rotate(); }
+      s.rightDown = right;
+    }
     if (!s.active && Math.hypot(s.pointer.x - s.start.x, s.pointer.y - s.start.y) < 6) return;
     s.active = true;
     event.preventDefault();
@@ -158,6 +181,44 @@ export function useDragInteraction(puzzle: Puzzle, state: GameState, dispatch: D
     };
   }, [cancel, finish, rotate, state.selectedId]);
 
+  useEffect(() => {
+    const down = (event: PointerEvent) => {
+      const s = session.current;
+      if (!s?.active || s.pointerType !== 'touch' || event.pointerType !== 'touch' || event.pointerId === s.pointerId) return;
+      if ((event.target as Element).closest('[data-drag-control]')) return;
+      event.preventDefault();
+      if (secondary.current) { secondary.current.moved = true; return; }
+      secondary.current = { id: event.pointerId, start: { x: event.clientX, y: event.clientY }, time: event.timeStamp, moved: false };
+      secondaryClick.current = event.pointerId;
+    };
+    const move = (event: PointerEvent) => {
+      const tap = secondary.current;
+      if (tap?.id === event.pointerId && Math.hypot(event.clientX - tap.start.x, event.clientY - tap.start.y) > 10) tap.moved = true;
+    };
+    const up = (event: PointerEvent) => {
+      const tap = secondary.current;
+      if (!tap || tap.id !== event.pointerId) return;
+      secondary.current = null;
+      event.preventDefault();
+      event.stopPropagation();
+      if (session.current?.active && !tap.moved && event.timeStamp - tap.time <= 300) rotate();
+    };
+    const cancelTap = (event: PointerEvent) => { if (secondary.current?.id === event.pointerId) secondary.current = null; };
+    const context = (event: MouseEvent) => { if (session.current?.active && session.current.pointerType === 'mouse') event.preventDefault(); };
+    window.addEventListener('pointerdown', down, true);
+    window.addEventListener('pointermove', move, true);
+    window.addEventListener('pointerup', up, true);
+    window.addEventListener('pointercancel', cancelTap, true);
+    window.addEventListener('contextmenu', context, true);
+    return () => {
+      window.removeEventListener('pointerdown', down, true);
+      window.removeEventListener('pointermove', move, true);
+      window.removeEventListener('pointerup', up, true);
+      window.removeEventListener('pointercancel', cancelTap, true);
+      window.removeEventListener('contextmenu', context, true);
+    };
+  }, [rotate]);
+
   const dragging = Boolean(view && !view.returning);
   useEffect(() => {
     if (!dragging) return;
@@ -189,10 +250,23 @@ export function useDragInteraction(puzzle: Puzzle, state: GameState, dispatch: D
     pointerHandlers: {
       onPointerMove: move, onPointerUp: end,
       onPointerCancel: (e: ReactPointerEvent<Element>) => { if (session.current?.pointerId === e.pointerId) cancel(); },
-      onLostPointerCapture: (e: ReactPointerEvent<Element>) => { if (session.current?.pointerId === e.pointerId) cancel(); },
+      onLostPointerCapture: (e: ReactPointerEvent<Element>) => {
+        const s = session.current;
+        if (s?.pointerId !== e.pointerId) return;
+        // Chromium pode soltar a captura após um chord de contexto, mesmo com menu suprimido.
+        if (s.pointerType === 'mouse' && s.recoverChordCapture && (e.buttons & 1)) {
+          s.recoverChordCapture = false;
+          s.source.setPointerCapture(s.pointerId);
+          return;
+        }
+        cancel();
+      },
     },
     onPointerDownCapture: () => { if (!session.current) suppressClick.current = false; },
     onClickCapture: (e: ReactMouseEvent) => {
+      if (e.nativeEvent instanceof PointerEvent && e.nativeEvent.pointerId === secondaryClick.current) {
+        e.preventDefault(); e.stopPropagation(); secondaryClick.current = null; return;
+      }
       if (suppressClick.current && e.detail !== 0) { e.preventDefault(); e.stopPropagation(); suppressClick.current = false; }
     },
   };

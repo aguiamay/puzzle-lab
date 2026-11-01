@@ -1,5 +1,5 @@
 export interface Point { readonly x: number; readonly y: number }
-export type Socket = 'circle' | 'square';
+export type Socket = 'circle' | 'square' | 'cross';
 export interface Cell extends Point { readonly socket: Socket }
 export type Orientation = 0 | 1 | 2 | 3;
 export interface PieceType { readonly code: string; readonly cells: readonly Cell[] }

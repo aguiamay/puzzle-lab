@@ -16,3 +16,17 @@ export function transform(cells: readonly Cell[], orientation: Orientation, mirr
   for (let i = 0; i < orientation; i++) result = rotate90(result);
   return result;
 }
+
+// A marca participa da equivalência; duas ocupações iguais podem ter restrições distintas.
+export function geometrySignature(cells: readonly Cell[]): string {
+  return normalize(cells).map(c => `${c.x},${c.y}:${c.socket}`).sort().join('|');
+}
+export function uniqueOrientations(cells: readonly Cell[]): Orientation[] {
+  const seen = new Set<string>();
+  return ([0, 1, 2, 3] as const).filter(orientation => {
+    const signature = geometrySignature(transform(cells, orientation));
+    if (seen.has(signature)) return false;
+    seen.add(signature);
+    return true;
+  });
+}

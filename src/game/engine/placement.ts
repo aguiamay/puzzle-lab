@@ -25,7 +25,7 @@ function placementValidator(puzzle: Puzzle, snapshot: Snapshot, piece: PieceInst
       const socket = sockets.get(key(cell));
       if (!socket) return fail('Essa posição não pertence à área válida.');
       if (occupied[key(cell)]) return fail('Há sobreposição com outra peça.');
-      if (socket !== cell.socket) return fail('Encaixe incompatível: combine círculos com círculos e quadrados com quadrados.');
+      if (socket !== cell.socket) return fail('Encaixe incompatível: combine marcas iguais (círculo, quadrado ou cruz).');
     }
     return { ok: true };
   };
